@@ -39,3 +39,17 @@ Rapid urbanization has led to an increase in housing societies, making complaint
 4. Run migrations and start server:
    `python manage.py migrate`
    `python manage.py runserver`
+
+## 📸 Screenshots
+
+### Home page
+![Home page](./screenshots/home.png)
+
+### Resident Home Page
+![resident_home](./screenshots/resident_home.png)
+
+### Admin Dashboard
+![Admin View](./screenshots/Admin.png)
+
+### Analytics Page
+![analytics ](./screenshots/analytics.png)
