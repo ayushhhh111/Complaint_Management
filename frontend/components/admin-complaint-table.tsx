@@ -29,8 +29,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { StatusBadge, PriorityBadge, CategoryBadge } from "@/components/status-badge"
 import { LoadingSpinner } from "@/components/loading-spinner"
-import { updateComplaint } from "@/lib/api"
-import type { Complaint, ComplaintStatus } from "@/lib/types"
+import { updateComplaint, fetchWorkers } from "@/lib/api"
+import type { Complaint, Worker } from "@/lib/types"
 import { MoreHorizontal, Eye, Settings2, MessageSquare } from "lucide-react"
 import {
   DropdownMenu,
@@ -51,11 +51,14 @@ export function AdminComplaintTable({
   onUpdate,
 }: AdminComplaintTableProps) {
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
-  const [actionType, setActionType] = useState<"status" | "department" | "comment" | null>(null)
-  const [newStatus, setNewStatus] = useState<ComplaintStatus>("pending")
+  const [actionType, setActionType] = useState<"status" | "department" | "comment" | "worker" | null>(null)
+  const [newStatus, setNewStatus] = useState<string>("pending")
   const [newDepartment, setNewDepartment] = useState("")
+  const [selectedWorker, setSelectedWorker] = useState<string>("")
+  const [workers, setWorkers] = useState<Worker[]>([])
   const [comment, setComment] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [workersLoading, setWorkersLoading] = useState(false)
 
   const departments = [
     "Maintenance",
@@ -65,13 +68,25 @@ export function AdminComplaintTable({
     "Administration",
   ]
 
-  const openAction = (complaint: Complaint, type: "status" | "department" | "comment") => {
+  const openAction = async (complaint: Complaint, type: "status" | "department" | "comment" | "worker") => {
     setSelectedComplaint(complaint)
     setActionType(type)
     if (type === "status") {
       setNewStatus(complaint.status)
     } else if (type === "department") {
       setNewDepartment(complaint.assignedDepartment || "")
+    } else if (type === "worker") {
+      setSelectedWorker("")
+      // Load workers when this action is opened
+      try {
+        setWorkersLoading(true)
+        const data = await fetchWorkers()
+        setWorkers(data)
+      } catch (error) {
+        console.error("Failed to load workers:", error)
+      } finally {
+        setWorkersLoading(false)
+      }
     }
     setComment("")
   }
@@ -84,32 +99,37 @@ export function AdminComplaintTable({
     setComment("")
   }
 
- // Inside AdminComplaintTable.tsx
-const handleSubmit = async () => {
-  if (!selectedComplaint) return; // Logic check
+ const handleSubmit = async () => {
+  if (!selectedComplaint) return
 
-  setIsSubmitting(true);
+  setIsSubmitting(true)
   try {
-    const updateData: any = {};
+    const updateData: any = {}
 
     if (actionType === "status") {
-      updateData.status = newStatus;
-      if (comment) updateData.resolution_comment = comment;
+      updateData.status = newStatus
+      if (comment) updateData.resolution_comment = comment
     } else if (actionType === "department") {
-      updateData.assigned_department = newDepartment;
+      updateData.assigned_department = newDepartment
+    } else if (actionType === "worker") {
+      if (selectedWorker) {
+        updateData.assigned_worker_id = selectedWorker;
+        if (selectedComplaint.status === "pending") {
+        updateData.status = "in-progress";
     }
-    if (!selectedComplaint) return;
-    // Use ! here to remove the red line
-    await updateComplaint(selectedComplaint!.id, updateData);
+      }
+    }
     
-    onUpdate();
-    closeDialog();
+    await updateComplaint(selectedComplaint.id, updateData)
+    
+    onUpdate()
+    closeDialog()
   } catch (error) {
-    console.error("Failed to update:", error);
+    console.error("Failed to update:", error)
   } finally {
-    setIsSubmitting(false);
+    setIsSubmitting(false)
   }
-};
+}
 
  const formatDate = (dateString: string) => {
   if (!dateString) return "N/A";
@@ -133,6 +153,7 @@ const handleSubmit = async () => {
               <TableHead className="text-muted-foreground font-medium">Category</TableHead>
               <TableHead className="text-muted-foreground font-medium">Priority</TableHead>
               <TableHead className="text-muted-foreground font-medium">Status</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Assigned to</TableHead>
               <TableHead className="text-muted-foreground font-medium">Date</TableHead>
               <TableHead className="text-muted-foreground font-medium w-12" />
             </TableRow>
@@ -146,7 +167,7 @@ const handleSubmit = async () => {
                       {complaint.title}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      by {complaint.user.username}
+                      by {complaint.residentName|| "Unknown Resident"}
                     </p>
                   </div>
                 </TableCell>
@@ -158,6 +179,23 @@ const handleSubmit = async () => {
                 </TableCell>
                 <TableCell>
                   <StatusBadge status={complaint.status} />
+                </TableCell>
+                <TableCell>
+             {complaint.assigned_worker ? (
+               <div>
+                    <div className="font-medium text-foreground line-clamp-1">
+
+                      {complaint.assigned_worker.worker_name}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      ({complaint.assigned_worker.worker_id|| "Unknown Resident"})
+                    </p>
+                  </div>
+                ) : (
+               <span className="text-xs text-muted-foreground italic">
+                 Not Assigned
+               </span>
+                )}
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {formatDate(complaint.created_at)}
@@ -182,9 +220,13 @@ const handleSubmit = async () => {
                         <Settings2 className="h-4 w-4" />
                         Update Status
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openAction(complaint, "department")} className="gap-2 cursor-pointer">
+                      {/*<DropdownMenuItem onClick={() => openAction(complaint, "department")} className="gap-2 cursor-pointer">
+                      <Settings2 className="h-4 w-4" />
+                       Assign Department
+                      </DropdownMenuItem>*/}
+                      <DropdownMenuItem onClick={() => openAction(complaint, "worker")} className="gap-2 cursor-pointer">
                         <Settings2 className="h-4 w-4" />
-                        Assign Department
+                        Assign Worker
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => openAction(complaint, "comment")} className="gap-2 cursor-pointer">
                         <MessageSquare className="h-4 w-4" />
@@ -206,6 +248,7 @@ const handleSubmit = async () => {
             <DialogTitle className="text-foreground">
               {actionType === "status" && "Update Status"}
               {actionType === "department" && "Assign Department"}
+              {actionType === "worker" && "Assign Worker"}
               {actionType === "comment" && "Add Resolution Comment"}
             </DialogTitle>
             <DialogDescription>
@@ -218,7 +261,7 @@ const handleSubmit = async () => {
               <>
                 <div className="space-y-2">
                   <Label className="text-foreground">New Status</Label>
-                  <Select value={newStatus} onValueChange={(v) => setNewStatus(v as ComplaintStatus)}>
+                  <Select value={newStatus} onValueChange={(v) => setNewStatus(v)}>
                     <SelectTrigger className="bg-input border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
@@ -260,6 +303,30 @@ const handleSubmit = async () => {
               </div>
             )}
 
+            {actionType === "worker" && (
+              <div className="space-y-2">
+                <Label className="text-foreground">Select Worker</Label>
+                {workersLoading ? (
+                  <p className="text-muted-foreground">Loading workers...</p>
+                ) : workers.length === 0 ? (
+                  <p className="text-muted-foreground">No workers available</p>
+                ) : (
+                  <Select value={selectedWorker} onValueChange={setSelectedWorker}>
+                    <SelectTrigger className="bg-input border-border text-foreground">
+                      <SelectValue placeholder="Choose a worker" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      {workers.map((worker) => (
+                        <SelectItem key={worker.id} value={worker.id.toString()}>
+                          {worker.worker_name} ({worker.worker_id})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
             {actionType === "comment" && (
               <div className="space-y-2">
                 <Label className="text-foreground">Resolution Comment</Label>
@@ -284,6 +351,7 @@ const handleSubmit = async () => {
               disabled={
                 isSubmitting ||
                 (actionType === "department" && !newDepartment) ||
+                (actionType === "worker" && !selectedWorker) ||
                 (actionType === "comment" && !comment)
               }
               className="gap-2"

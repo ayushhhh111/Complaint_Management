@@ -10,6 +10,13 @@ class Complaint(models.Model):
     is_urgent=models.BooleanField(default=False)
     image=models.ImageField(upload_to='complaints/', null=True,blank=True)
     description = models.TextField()
+    assigned_worker = models.ForeignKey(
+        'Worker', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='complaints'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -36,3 +43,13 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.user.username
+
+class Worker(models.Model):
+    worker_name = models.CharField(max_length=100)
+    worker_id = models.CharField(max_length=50, unique=True)
+    phone_no=models.CharField(max_length=15, default="-")
+    role=models.CharField(max_length=30, default="-")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.worker_name} ({self.worker_id})"

@@ -20,12 +20,13 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
+        localStorage.clear();
         // 1. Store the token
         localStorage.setItem("access_token", data.access);
         // 2. Store the admin status (convert boolean to string)
         localStorage.setItem("is_staff", String(data.is_staff));
-        
-        // 3. Redirect based on role
+        const userId = data.user_id || data.id || (data.user && data.user.id);
+        localStorage.setItem("user_id", String(userId));
         if (data.is_staff) {
           window.location.href = "/admin";
         } else {

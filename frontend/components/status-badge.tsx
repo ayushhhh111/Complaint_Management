@@ -43,7 +43,7 @@ interface PriorityBadgeProps {
 
 // components/priority-badge.tsx
 export function PriorityBadge({ priority }: { priority: boolean }) {
-  const isUrgent = priority === true;
+  const isUrgent = priority ;
   
   return (
     <span className={`px-2 py-1 rounded text-xs font-bold ${

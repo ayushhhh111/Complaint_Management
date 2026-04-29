@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatusBadge, PriorityBadge, CategoryBadge } from "@/components/status-badge"
 import type { Complaint } from "@/lib/types"
-import { Clock, User, Building, MessageSquare, CheckCircle2 } from "lucide-react"
+import { Clock, User, Building, MessageSquare, CheckCircle2, Info,HardHat,ShieldCheck, MapPin } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
 
 interface ComplaintDetailProps {
   complaint: Complaint
@@ -11,144 +12,161 @@ interface ComplaintDetailProps {
 
 export function ComplaintDetail({ complaint }: ComplaintDetailProps) {
   return (
-    <div className="space-y-6">
-      {/* Main Info */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <CategoryBadge category={complaint.category} />
-              <PriorityBadge priority={complaint.priority} />
-              <StatusBadge status={complaint.status} />
-            </div>
-            <CardTitle className="text-foreground text-xl">
-              {complaint.title}
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <p className="text-muted-foreground">{complaint.description}</p>
-
-          {complaint.imageUrl && (
-            <div className="rounded-lg overflow-hidden border border-border">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in fade-in duration-500">
+      
+      {/* LEFT COLUMN: Main Content */}
+      <div className="lg:col-span-2 space-y-6">
+        <Card className="overflow-hidden border-none shadow-md bg-zinc-900/50 backdrop-blur-sm">
+          {complaint.image && (
+            <div className="relative aspect-video w-full overflow-hidden group">
               <img
-                src={complaint.imageUrl || "/placeholder.svg"}
-                alt="Complaint"
-                className="w-full max-h-64 object-cover"
+                src={complaint.image}
+                alt={complaint.title}
+                className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/80 to-transparent" />
             </div>
           )}
-
-          <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-border">
-            <div className="flex items-center gap-3 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-muted-foreground">Submitted by</p>
-                <p className="text-foreground font-medium">
-                  {complaint.residentName}
-                </p>
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-start mb-2">
+              <CategoryBadge category={complaint.department as any} />
+              <div className="flex gap-2">
+                <PriorityBadge priority={complaint.is_urgent ? "high" : "medium"} />
+                <StatusBadge status={complaint.status as any} />
               </div>
             </div>
-            <div className="flex items-center gap-3 text-sm">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-muted-foreground">Submitted on</p>
-                <p className="text-foreground font-medium">
-                  {new Date(complaint.createdAt).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            </div>
-            {complaint.assignedDepartment && (
-              <div className="flex items-center gap-3 text-sm">
-                <Building className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-muted-foreground">Assigned to</p>
-                  <p className="text-foreground font-medium">
-                    {complaint.assignedDepartment}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Category Explanation */}
-          <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
-            <p className="text-sm text-accent font-medium mb-1">
-              Category Classification
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {complaint.categoryExplanation}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Resolution Comment */}
-      {complaint.resolutionComment && (
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground flex items-center gap-2 text-lg">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-              Resolution
+            <CardTitle className="text-3xl font-bold tracking-tight text-white">
+              {complaint.title}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">{complaint.resolutionComment}</p>
+            <div className="prose prose-invert max-w-none">
+              <p className="text-zinc-300 leading-relaxed text-lg italic mb-6">
+                &quot;{complaint.description}&quot;
+              </p>
+            </div>
+            
+            {complaint.resolutionComment && (
+              <div className="mt-8 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <div className="flex items-center gap-2 mb-2 text-emerald-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span className="font-semibold">Resolution Summary</span>
+                </div>
+                <p className="text-zinc-300">{complaint.resolutionComment}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+      </div>
 
-      {/* Status Timeline */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-foreground flex items-center gap-2 text-lg">
-            <MessageSquare className="h-5 w-5 text-accent" />
-            Status History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative pl-6 space-y-6">
-            {/* Timeline line */}
-            <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
+      {/* RIGHT COLUMN: Sidebar */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* Info Card */}
+        <Card className="border-zinc-800 bg-zinc-900/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium uppercase tracking-wider text-zinc-500">Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <DetailItem icon={<User />} label="Submitted by" value={complaint.residentName} />
+            <DetailItem icon={<Clock />} label="Date" value={new Date(complaint.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} />
+            <DetailItem icon={<Building />} label="Department" value={complaint.department} />
+            
+            <Separator className="bg-zinc-800" />
 
-            {complaint.statusHistory.map((update, index) => (
-              <div key={update.id} className="relative">
-                {/* Timeline dot */}
-                <div
-                  className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full border-2 ${
-                    index === complaint.statusHistory.length - 1
-                      ? "bg-accent border-accent"
-                      : "bg-background border-border"
-                  }`}
-                />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <StatusBadge status={update.status} />
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(update.updatedAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+            {/* ASSIGNED WORKER SECTION */}
+            <div className="pt-2">
+              <p className="text-zinc-500 text-[10px] uppercase font-bold mb-3">Assigned Personnel</p>
+              {complaint.assigned_worker ? (
+                <div className="flex items-center gap-4 p-3 rounded-lg bg-zinc-800/40 border border-zinc-700/50 transition-all hover:bg-zinc-800/60">
+                  <div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                    <HardHat className="h-5 w-5" />
                   </div>
-                  <p className="text-sm text-foreground">{update.comment}</p>
-                  <p className="text-xs text-muted-foreground">
-                    By {update.updatedBy}
-                  </p>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-zinc-100">{complaint.assigned_worker.worker_name}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-300 uppercase tracking-tighter">
+                        Contact no: {complaint.assigned_worker.phone_no}
+                      </span>
+                      <span className="text-[10px] text-zinc-500"></span>
+                      <span className="text-[10px] text-zinc-400">{complaint.assigned_worker.role}</span>
+                    </div>
+                  </div>
+                  <ShieldCheck className="h-4 w-4 text-emerald-500/50" />
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ) : (
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-zinc-800">
+                  <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-600">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <p className="text-xs text-zinc-500 italic">No worker assigned yet</p>
+                </div>
+              )}
+            </div>
+
+            <Separator className="bg-zinc-800" />
+            
+            <div className="flex items-start gap-3">
+               <Info className="h-4 w-4 mt-0.5 text-blue-400" />
+               <p className="text-xs text-zinc-400 leading-snug">
+                 This request is marked as <span className="text-zinc-200">{complaint.is_urgent ? "Urgent" : "Standard"}</span> priority.
+               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* History Card */}
+        <Card className="border-zinc-800 bg-zinc-900/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium uppercase tracking-wider text-zinc-500 flex items-center gap-2">
+               <MessageSquare className="h-4 w-4" /> Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative space-y-4 before:absolute before:inset-y-0 before:left-2 before:w-[1px] before:bg-zinc-800">
+              {/* Dynamic Assignment Item in Timeline */}
+              {complaint.assigned_worker && (
+                <TimelineItem 
+                  status="Assigned" 
+                  date={complaint.createdAt} // Ideally you'd have an 'assigned_at' field
+                  comment={`Task assigned to ${complaint.assigned_worker.worker_name} for resolution.`}
+                />
+              )}
+              
+              <TimelineItem 
+                status="Created" 
+                date={complaint.createdAt} 
+                comment="Request created and submitted to the portal." 
+                isLatest={!complaint.assigned_worker}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function DetailItem({ icon, label, value }: { icon: React.ReactNode, label: string, value: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="text-zinc-500 h-4 w-4">{icon}</div>
+      <div className="text-sm">
+        <p className="text-zinc-500 text-[10px] uppercase font-bold">{label}</p>
+        <p className="text-zinc-200 font-medium">{value || "Not Specified"}</p>
+      </div>
+    </div>
+  )
+}
+
+function TimelineItem({ status, date, comment, isLatest }: any) {
+  return (
+    <div className="relative pl-6">
+      <div className={`absolute left-0 top-1.5 h-4 w-4 rounded-full border-2 border-zinc-900 ${isLatest ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-zinc-700'}`} />
+      <div className="space-y-1">
+        <p className="text-xs font-bold text-zinc-200 uppercase">{status}</p>
+        <p className="text-[10px] text-zinc-500">{new Date(date).toLocaleString()}</p>
+        <p className="text-sm text-zinc-400 leading-tight">{comment}</p>
+      </div>
     </div>
   )
 }

@@ -77,7 +77,7 @@ export function ComplaintForm({ onSuccess }: { onSuccess: () => void }) {
               name="title" 
               placeholder="Briefly describe the problem" 
               required 
-              className="bg-white focus-visible:ring-primary/50 text-black"
+              className="bg-white text-white focus-visible:ring-primary/50 "
             />
           </div>
 
@@ -87,7 +87,7 @@ export function ComplaintForm({ onSuccess }: { onSuccess: () => void }) {
               id="description"
               name="description" 
               placeholder="Tell us more about what's happening..." 
-              className="min-h-[100px] bg-white resize-none text-black" 
+              className="min-h-[100px] bg-white resize-none text-white" 
               required 
             />
           </div>
@@ -95,7 +95,7 @@ export function ComplaintForm({ onSuccess }: { onSuccess: () => void }) {
           <div className="space-y-1.5">
     <Label htmlFor="department">Department</Label>
     <Select name="department" required>
-      <SelectTrigger className="bg-white text-black focus:ring-primary/50">
+      <SelectTrigger className="bg-white text-white focus:ring-primary/50">
         <SelectValue placeholder="Select a department" />
       </SelectTrigger>
       <SelectContent>

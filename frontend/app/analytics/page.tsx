@@ -62,7 +62,7 @@ export default function AnalyticsDashboard() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
+  const [authorized, setAuthorized] = useState<boolean | null>(null)
   const loadAnalytics = async () => {
     try {
       setIsLoading(true)
@@ -77,9 +77,48 @@ export default function AnalyticsDashboard() {
   }
 
   useEffect(() => {
-    loadAnalytics()
+     const role = localStorage.getItem("user_role")
+    const savedTheme = localStorage.getItem("theme") || "dark";
+  
+  // Apply to the <html> element for Tailwind/CSS support
+  if (savedTheme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
+    if (role === "admin") {
+      setAuthorized(true)
+      loadAnalytics()
+    } else {
+      setAuthorized(false)
+    }
   }, [])
-
+if (authorized === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingState message="Verifying admin access..." />
+      </div>
+    )
+  }
+if (authorized === false) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <div className="bg-destructive/10 p-6 rounded-2xl flex flex-col items-center border border-destructive/20">
+          <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+          <h1 className="text-2xl font-bold text-foreground">Unauthorized User</h1>
+          <p className="text-muted-foreground mt-2 text-center max-w-xs">
+            This page is restricted to administrators only.
+          </p>
+          <Button 
+            className="mt-6" 
+            onClick={() => window.location.href = "/"}
+          >
+            Go Back to Login
+          </Button>
+        </div>
+      </div>
+    )
+  }
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -110,7 +149,7 @@ export default function AnalyticsDashboard() {
 
   if (!analytics) return null
 
-  const totalComplaints = analytics.complaintsByCategory.reduce(
+  const totalComplaints = analytics.complaintsByDepartment.reduce(
     (acc, item) => acc + item.count,
     0
   )
@@ -154,7 +193,7 @@ export default function AnalyticsDashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
-                    {analytics.complaintsByPriority.find((p) => p.priority === "Urgent")?.count || 0}
+                    {analytics.complaintsByUrgency.find((u) => u.is_urgent === true)?.count || 0}
                   </p>
                   <p className="text-sm text-muted-foreground">Urgent Issues</p>
                 </div>
@@ -169,9 +208,9 @@ export default function AnalyticsDashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
-                    {analytics.complaintsByCategory.length}
+                    {analytics.complaintsByDepartment.length}
                   </p>
-                  <p className="text-sm text-muted-foreground">Categories</p>
+                  <p className="text-sm text-muted-foreground">Departments</p>
                 </div>
               </div>
             </CardContent>
@@ -195,24 +234,24 @@ export default function AnalyticsDashboard() {
 
         {/* Charts Grid */}
         <div className="grid lg:grid-cols-2 gap-6 mb-6">
-          {/* Complaints by Category - Bar Chart */}
+          {/* Complaints by Department - Bar Chart */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">Complaints by Category</CardTitle>
+              <CardTitle className="text-foreground">Complaints by Department</CardTitle>
               <CardDescription>
-                Distribution of complaints across different categories
+                Distribution of complaints across different departments
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
-                    data={analytics.complaintsByCategory}
+                    data={analytics.complaintsByDepartment}
                     margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#333" />
                     <XAxis
-                      dataKey="category"
+                      dataKey="department"
                       tick={{ fill: "#888", fontSize: 12 }}
                       axisLine={{ stroke: "#333" }}
                     />
@@ -222,7 +261,7 @@ export default function AnalyticsDashboard() {
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {analytics.complaintsByCategory.map((_, index) => (
+                      {analytics.complaintsByDepartment.map((_, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
@@ -235,12 +274,12 @@ export default function AnalyticsDashboard() {
             </CardContent>
           </Card>
 
-          {/* Complaints by Priority - Pie Chart */}
+          {/* Complaints by Urgency - Pie Chart */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle className="text-foreground">Complaints by Priority</CardTitle>
+              <CardTitle className="text-foreground">Complaints by Urgency</CardTitle>
               <CardDescription>
-                Breakdown of urgent vs normal priority complaints
+                Breakdown of urgent vs normal complaints
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -248,21 +287,21 @@ export default function AnalyticsDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsPieChart>
                     <Pie
-                      data={analytics.complaintsByPriority}
+                      data={analytics.complaintsByUrgency}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
                       outerRadius={100}
                       paddingAngle={5}
                       dataKey="count"
-                      nameKey="priority"
-                      label={({ priority, count }) => `${priority}: ${count}`}
+                      nameKey="is_urgent"
+                      label={({ is_urgent, count }) => `${is_urgent ? 'Urgent' : 'Normal'}: ${count}`}
                       labelLine={{ stroke: "#888" }}
                     >
-                      {analytics.complaintsByPriority.map((entry) => (
+                      {analytics.complaintsByUrgency.map((entry) => (
                         <Cell
-                          key={`cell-${entry.priority}`}
-                          fill={PRIORITY_COLORS[entry.priority as keyof typeof PRIORITY_COLORS] || "#60a5fa"}
+                          key={`cell-${entry.is_urgent}`}
+                          fill={entry.is_urgent ? "#f87171" : "#60a5fa"}
                         />
                       ))}
                     </Pie>

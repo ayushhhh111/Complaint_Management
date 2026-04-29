@@ -35,7 +35,7 @@ export default function AdminLoginPage() {
         // Store the role and the access token returned by your updated views.py
         localStorage.setItem("user_role", "admin"); 
         // This 'access' key must be returned by your Django view Response
-        localStorage.setItem("access_token", data.access); 
+        localStorage.setItem("access_token", data.access_token); 
         
         // Redirect to the Admin Dashboard
         window.location.href = "/admin"; 

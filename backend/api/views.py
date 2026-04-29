@@ -1,7 +1,7 @@
 from rest_framework import generics, permissions
-from .serializers import UserSerializer
+from .serializers import UserSerializer, WorkerSerializer
 from django.contrib.auth.models import User
-from .models import Complaint
+from .models import Complaint, Worker
 from .serializers import ComplaintSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .serializers import MyTokenObtainPairSerializer
@@ -24,16 +24,17 @@ class RegisterView(generics.CreateAPIView):
 class ComplaintListCreateView(generics.ListCreateAPIView):
     serializer_class = ComplaintSerializer
     permission_classes = [permissions.AllowAny]
-
+    
     def get_queryset(self):
-        # Admins see everything; Residents only see their own
-        if self.request.user.is_staff:
-            return Complaint.objects.all()
-        return Complaint.objects.filter(user=self.request.user)
+        # Temporary: Return everything to see if the connection works
+        return Complaint.objects.all().order_by('-created_at')
 
     def perform_create(self, serializer):
         # Automatically tie the complaint to the logged-in user
-        serializer.save(user=self.request.user)
+        if self.request.user.is_authenticated:
+            serializer.save(user=self.request.user)
+        else:
+            raise PermissionError("You must be authenticated to create a complaint")
 class ComplaintDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Complaint.objects.all()
     serializer_class = ComplaintSerializer
@@ -61,11 +62,10 @@ def admin_login(request):
         if check_password(raw_password, admin.password):
             refresh = RefreshToken.for_user(admin)
             return Response({
-                "access": str(refresh.access_token),
+                "access_token": str(refresh.access_token),
                 "refresh": str(refresh),
                 "message": "Access Granted",
                 "role": "admin",
-                "access": "admin_session_token" # Required by your frontend
             }, status=200)
         
         return Response({"error": "Invalid admin credentials."}, status=401)
@@ -87,36 +87,23 @@ def admin_signup(request):
     new_admin.save()
 
     return Response({"message": "Admin account created successfully"}, status=201)
-# backend/api/views.py
-class ComplaintListCreateView(generics.ListCreateAPIView):
-    serializer_class = ComplaintSerializer
-    permission_classes = [permissions.AllowAny]
-    # Add parsers to handle image and form data
-    parser_classes = (MultiPartParser, FormParser) 
 
-    def get_queryset(self):
-        return Complaint.objects.all()
-
-    def perform_create(self, serializer):
-        # Ensure user is tied correctly if authenticated
-        user = self.request.user if self.request.user.is_authenticated else None
-        serializer.save(user=user)
 class AnalyticsView(APIView):
     # Set to AllowAny for simple access as requested
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
-        # 1. Complaints by Category (Bar Chart)
-        category_data = Complaint.objects.values('category').annotate(
+        # 1. Complaints by Department (Bar Chart)
+        department_data = Complaint.objects.values('department').annotate(
             count=Count('id')
         ).order_by('-count')
 
-        # 2. Complaints by Priority (Pie Chart)
-        priority_data = Complaint.objects.values('priority').annotate(
+        # 2. Complaints by Urgency (Pie Chart)
+        urgency_data = Complaint.objects.values('is_urgent').annotate(
             count=Count('id')
         )
 
-        # 3. Monthly Trends (Line Chart - Last 6 Months)
+        # 3. Monthly Trends (Line Chart)
         monthly_data = Complaint.objects.annotate(
             month=TruncMonth('created_at')
         ).values('month').annotate(
@@ -133,7 +120,19 @@ class AnalyticsView(APIView):
         ]
 
         return Response({
-            "complaintsByCategory": list(category_data),
-            "complaintsByPriority": list(priority_data),
+            "complaintsByDepartment": list(department_data),
+            "complaintsByUrgency": list(urgency_data),
             "monthlyTrends": trends
         })
+
+class WorkerListCreateView(generics.ListCreateAPIView):
+    queryset = Worker.objects.all()
+    serializer_class = WorkerSerializer
+    permission_classes = [permissions.AllowAny]
+
+class WorkerDetailView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Worker.objects.all()
+    serializer_class = WorkerSerializer
+    permission_classes = [permissions.AllowAny]
+
+

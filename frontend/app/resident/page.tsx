@@ -32,22 +32,45 @@ export default function ResidentDashboard() {
   const [showForm, setShowForm] = useState(false)
   const searchParams = useSearchParams()
 
-  const loadComplaints = async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      const data = await fetchComplaints()
-      setComplaints(data)
-      setFilteredComplaints(data)
-    } catch {
-      setError("Failed to load complaints. Please try again.")
-    } finally {
-      setIsLoading(false)
+// Inside ResidentDashboard component
+// Inside ResidentDashboard.tsx
+const loadComplaints = async () => {
+  try {
+    setIsLoading(true);
+    setError(null);
+
+    // 1. Get the ID from localStorage
+    const storedUserId = localStorage.getItem("user_id");
+
+    // 2. Fetch all complaints (since your view returns all)
+    const data = await fetchComplaints();
+
+    // 3. Filter client-side
+    if (storedUserId) {
+      const myComplaints = data.filter(
+        (complaint: any) => String(complaint.user) === String(storedUserId)
+      );
+      
+      setComplaints(myComplaints);
+      setFilteredComplaints(myComplaints);
     }
+  } catch (err) {
+    setError("Failed to load your complaints.");
+  } finally {
+    setIsLoading(false);
   }
+};
 
   useEffect(() => {
     loadComplaints()
+    const savedTheme = localStorage.getItem("theme") || "dark";
+  
+  // Apply to the <html> element for Tailwind/CSS support
+  if (savedTheme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
   }, [])
 
   useEffect(() => {

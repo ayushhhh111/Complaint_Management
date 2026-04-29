@@ -1,43 +1,76 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useParams } from "next/navigation"
-import { Complaint } from "@/lib/types"
+import { useState, useEffect, use } from "react"
+import Link from "next/link"
+import { Header } from "@/components/header"
+import { ComplaintDetail } from "@/components/complaint-detail"
+import { LoadingState } from "@/components/loading-spinner"
+import { Button } from "@/components/ui/button"
+import { fetchComplaintById } from "@/lib/api"
+import type { Complaint } from "@/lib/types"
+import { ArrowLeft, AlertTriangle } from "lucide-react"
 
-export default function ComplaintDetailPage() {
-  const { id } = useParams()
+export default function ComplaintDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = use(params)
   const [complaint, setComplaint] = useState<Complaint | null>(null)
-  const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const fetchDetail = async () => {
+    const loadComplaint = async () => {
       try {
-        const response = await fetch(`http://127.0.0.1:8000/api/complaints/${id}/`)
-        if (!response.ok) throw new Error("Failed to load details")
-        const data = await response.json()
+        setIsLoading(true)
+        setError(null)
+        const data = await fetchComplaintById(id)
         setComplaint(data)
-      } catch (err: any) {
-        setError(err.message)
+      } catch {
+        setError("Failed to load complaint details.")
+      } finally {
+        setIsLoading(false)
       }
     }
-    if (id) fetchDetail()
+
+    loadComplaint()
   }, [id])
 
-  if (error) return <div className="p-10 text-red-500">{error}</div>
-  if (!complaint) return <div className="p-10">Loading...</div>
-
   return (
-    <div className="p-10 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">{complaint.title}</h1>
-      <div className="bg-card p-6 rounded-lg border">
-        <p className="text-muted-foreground mb-4">{complaint.description}</p>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div><strong>Status:</strong> {complaint.status}</div>
-          <div><strong>Priority:</strong> {complaint.priority}</div>
-          <div><strong>Category:</strong> {complaint.category}</div>
-          <div><strong>Resident:</strong> {complaint.residentName}</div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+
+      <main className="container mx-auto px-4 py-8 max-w-3xl">
+        <Link href="/resident">
+          <Button variant="ghost" className="mb-6 gap-2 -ml-2 text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Complaints
+          </Button>
+        </Link>
+
+        {isLoading ? (
+          <LoadingState message="Loading complaint details..." />
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <AlertTriangle className="h-10 w-10 text-destructive" />
+            <p className="text-muted-foreground">{error}</p>
+            <Link href="/resident">
+              <Button variant="outline">Return to Dashboard</Button>
+            </Link>
+          </div>
+        ) : complaint ? (
+          <ComplaintDetail complaint={complaint} />
+        ) : (
+          <div className="flex flex-col items-center justify-center py-12 gap-4">
+            <AlertTriangle className="h-10 w-10 text-amber-400" />
+            <p className="text-muted-foreground">Complaint not found</p>
+            <Link href="/resident">
+              <Button variant="outline">Return to Dashboard</Button>
+            </Link>
+          </div>
+        )}
+      </main>
     </div>
   )
 }

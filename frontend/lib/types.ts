@@ -31,18 +31,19 @@ export interface Complaint {
   residentId: string
   created_at: string
   updatedAt: string
+  assigned_worker?: Worker | null;
   assignedDepartment?: string
   resolutionComment?: string
   statusHistory: StatusUpdate[]
 }
 
 export interface AnalyticsData {
-  complaintsByCategory: {
-    category: string
+  complaintsByDepartment: {
+    department: string
     count: number
   }[]
-  complaintsByPriority: {
-    priority: string
+  complaintsByUrgency: {
+    is_urgent: boolean
     count: number
   }[]
   monthlyTrends: {
@@ -54,4 +55,13 @@ export interface User {
   id: number;
   username: string;
   email: string;
+}
+
+export interface Worker {
+  id: number;
+  worker_name: string;
+  worker_id: string;
+  phone_no:string;
+  assigned_to?: number;
+  created_at: string;
 }

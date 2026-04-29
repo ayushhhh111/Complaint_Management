@@ -1,11 +1,16 @@
-import type { Complaint, AnalyticsData, ComplaintStatus } from "./types"
+import type { Complaint, AnalyticsData, ComplaintStatus, Worker } from "./types"
 
 const API_BASE_URL = "/api"
 
 // Simulate network delay
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-const token = localStorage.getItem("access_token"); // Ensure this matches your login key
-// Mock data for demonstration
+// Replace the crashing line 7 with a safe helper
+const getAuthToken = () => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("access_token");
+  }
+  return null;
+};
 const mockComplaints: Complaint[] = [
   {
     id: "1",
@@ -208,15 +213,22 @@ const mockAnalytics: AnalyticsData = {
 export async function fetchComplaints(): Promise<Complaint[]> {
   const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
   
+  // Check if token is null OR the string "undefined"
+  if (!token || token === "undefined") {
+    console.error("No valid token found in LocalStorage");
+    return []; // Return empty array instead of crashing
+  }
+
   const response = await fetch("http://127.0.0.1:8000/api/complaints/", {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
     },
   });
 
   if (!response.ok) {
-    throw new Error("Failed to fetch complaints");
+    throw new Error(`Failed to fetch: ${response.status}`);
   }
 
   return response.json();
@@ -225,8 +237,30 @@ export async function fetchComplaints(): Promise<Complaint[]> {
 export async function fetchComplaintById(
   id: string
 ): Promise<Complaint | null> {
-  await delay(500)
-  return mockComplaints.find((c) => c.id === id) || null
+  // Get the token from localStorage for authentication
+  const token = localStorage.getItem("access_token");
+
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/api/complaints/${id}/`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        // Only add Authorization if your Django view requires it
+        "Authorization": `Bearer ${token}` 
+      },
+    });
+
+    if (!res.ok) {
+      if (res.status === 404) return null;
+      throw new Error("Failed to fetch complaint");
+    }
+
+    const data = await res.json();
+    return data as Complaint;
+  } catch (error) {
+    console.error("Error fetching complaint:", error);
+    return null;
+  }
 }
 
 export async function createComplaint(data: { title: string; description: string }): Promise<Complaint> {
@@ -245,27 +279,35 @@ export async function createComplaint(data: { title: string; description: string
 }
 
 
-// frontend/lib/api.ts
 export async function updateComplaint(id: number, data: any) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  
+  // Create FormData object
+  const formData = new FormData();
+  
+  // Append all keys from your data object to formData
+  Object.keys(data).forEach(key => {
+    formData.append(key, data[key]);
+  });
+
   const response = await fetch(`http://127.0.0.1:8000/api/complaints/${id}/`, {
     method: "PATCH", 
     headers: {
-      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
     },
-    body: JSON.stringify(data),
+    body: formData,
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
+    const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.detail || "Failed to update complaint");
   }
 
   return response.json();
 }
-
 // frontend/lib/api.ts
 export async function fetchAnalytics(): Promise<AnalyticsData> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/analytics/`, {
+  const response = await fetch("http://127.0.0.1:8000/analytics/", {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -273,10 +315,13 @@ export async function fetchAnalytics(): Promise<AnalyticsData> {
   });
 
   if (!response.ok) {
+    console.error("[v0] Failed to fetch analytics. Status:", response.status);
     throw new Error("Failed to fetch analytics");
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log("[v0] Fetched analytics:", data);
+  return data;
 }
 
 // frontend/lib/types.ts
@@ -287,17 +332,83 @@ export type ComplaintStatus = 'pending' | 'in-progress' | 'resolved';
 
 export interface Complaint {
   id: number;
+  user: number;
   title: string;
   description: string;
-  status: 'pending' | 'in-progress' | 'resolved';
-  priority: 'low' | 'normal' | 'high' | 'urgent';
-  category: string;
-  createdAt: string; // Matches the serializer source
-  residentName: string; // Matches the serializer source
+  status: string;
+  department: string;
+  is_urgent: boolean;
+  image?: string;
+  created_at: string;
+  residentName: string;
+  createdAt?: string;
 }
 
 export interface AnalyticsData {
-  complaintsByCategory: { category: string; count: number }[];
-  complaintsByPriority: { priority: string; count: number }[];
+  complaintsByDepartment: { department: string; count: number }[];
+  complaintsByUrgency: { is_urgent: boolean; count: number }[];
   monthlyTrends: { month: string; count: number }[];
+}
+
+export async function fetchWorkers(): Promise<Worker[]> {
+  const response = await fetch("http://127.0.0.1:8000/api/workers/", {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    console.error("[v0] Failed to fetch workers. Status:", response.status);
+    throw new Error("Failed to fetch workers");
+  }
+
+  const data = await response.json();
+  console.log("[v0] Fetched workers:", data);
+  return data;
+}
+
+export async function createWorker(data: { worker_name: string; worker_id: string }): Promise<Worker> {
+  const response = await fetch("http://127.0.0.1:8000/api/workers/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create worker");
+  }
+
+  return response.json();
+}
+
+export async function updateWorker(id: number, data: any): Promise<Worker> {
+  const response = await fetch(`http://127.0.0.1:8000/api/workers/${id}/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update worker");
+  }
+
+  return response.json();
+}
+
+export async function deleteWorker(id: number): Promise<void> {
+  const response = await fetch(`http://127.0.0.1:8000/api/workers/${id}/`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete worker");
+  }
 }

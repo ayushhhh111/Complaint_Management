@@ -1,0 +1,9 @@
+# Dependency directorie
+.venv/
+
+
+# Python/Django
+__pycache__/
+db.sqlite3
+media/
+

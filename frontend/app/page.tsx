@@ -25,6 +25,14 @@ export default function LandingPage() {
     // Check for existing session in localStorage
     const token = localStorage.getItem("access_token")
     const role = localStorage.getItem("user_role")
+    const savedTheme = localStorage.getItem("theme") || "dark";
+  
+  // Apply to the <html> element for Tailwind/CSS support
+  if (savedTheme === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
     setIsLoggedIn(!!token)
     setUserRole(role || "")
   }, [])
